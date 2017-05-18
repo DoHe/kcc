@@ -47,7 +47,7 @@
     <item row="2" column="0" colspan="2">
      <widget class="QListWidget" name="jobList">
       <property name="styleSheet">
-       <string notr="true">QListWidget#jobList {background:#ffffff;background-image:url(:/Other/icons/list_background.png);background-position:center center;background-repeat:no-repeat;}</string>
+       <string notr="true">QListWidget#jobList {background:#ffffff;background-image:url(:/Other/icons/list_background.png);background-position:center center;background-repeat:no-repeat;color:rgb(0,0,0);}</string>
       </property>
       <property name="selectionMode">
        <enum>QAbstractItemView::NoSelection</enum>
@@ -174,10 +174,13 @@
        <item row="0" column="2">
         <widget class="QCheckBox" name="qualityBox">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style='white-space:pre'&gt;High quality Panel View.&lt;br/&gt;Require source files with bigger resolution than target device.&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Highly impact size of output file!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style='white-space:pre'&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;Unchecked - 4 panels&lt;br/&gt;&lt;/span&gt;Zoom each corner separately.&lt;/p&gt;&lt;p style='white-space:pre'&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;Indeterminate - 2 panels&lt;br/&gt;&lt;/span&gt;Zoom only the top and bottom of the page.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;Checked - 4 high quality panels&lt;br/&gt;&lt;/span&gt;Zoom each corner separately. Try to increase the quality of magnification. Check wiki for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>HQ zoom</string>
+          <string>Panel View 4/2/HQ</string>
+         </property>
+         <property name="tristate">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -228,12 +231,12 @@
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QCheckBox" name="noDitheringBox">
+        <widget class="QCheckBox" name="outputSplit">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style='white-space:pre'&gt;Create PNG files instead JPEG.&lt;br/&gt;Quality increase is not noticeable on most of devices.&lt;br/&gt;Output files &lt;span style=&quot; font-weight:600;&quot;&gt;might&lt;/span&gt; be smaller.&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;MOBI conversion will be much slower.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style='white-space:pre'&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;Unchecked - Automatic mode&lt;br/&gt;&lt;/span&gt;Output will be splitted automatically.&lt;/p&gt;&lt;p style='white-space:pre'&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;Checked - Volume mode&lt;br/&gt;&lt;/span&gt;Every subdirectory will be considered as separate volume.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>PNG output</string>
+          <string>Output split</string>
          </property>
         </widget>
        </item>
@@ -510,7 +513,7 @@
   <tabstop>upscaleBox</tabstop>
   <tabstop>gammaBox</tabstop>
   <tabstop>borderBox</tabstop>
-  <tabstop>noDitheringBox</tabstop>
+  <tabstop>outputSplit</tabstop>
   <tabstop>colorBox</tabstop>
   <tabstop>editorButton</tabstop>
   <tabstop>wikiButton</tabstop>

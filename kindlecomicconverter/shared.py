@@ -1,5 +1,5 @@
 # Copyright (c) 2012-2014 Ciro Mattia Gonano <ciromattia@gmail.com>
-# Copyright (c) 2013-2016 Pawel Jastrzebski <pawelj@iosphe.re>
+# Copyright (c) 2013-2017 Pawel Jastrzebski <pawelj@iosphe.re>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -17,20 +17,14 @@
 #
 
 import os
-from sys import version_info
 from hashlib import md5
 from html.parser import HTMLParser
 from distutils.version import StrictVersion
-from time import sleep
 from shutil import rmtree, copy
 from tempfile import mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
 from re import split
 from traceback import format_tb
-try:
-    from scandir import walk
-except ImportError:
-    walk = os.walk
 
 
 class HTMLStripper(HTMLParser):
@@ -71,7 +65,7 @@ def walkLevel(some_dir, level=1):
     some_dir = some_dir.rstrip(os.path.sep)
     assert os.path.isdir(some_dir)
     num_sep = some_dir.count(os.path.sep)
-    for root, dirs, files in walk(some_dir):
+    for root, dirs, files in os.walk(some_dir):
         dirs, files = walkSort(dirs, files)
         yield root, dirs, files
         num_sep_this = root.count(os.path.sep)
@@ -96,30 +90,6 @@ def check7ZFile(filePath):
     return header == b"7z\xbc\xaf'\x1c"
 
 
-def saferReplace(old, new):
-    for x in range(30):
-        try:
-            os.replace(old, new)
-        except PermissionError:
-            sleep(1)
-        else:
-            break
-    else:
-        raise PermissionError("Failed to move the file.")
-
-
-def saferRemove(target):
-    for x in range(30):
-        try:
-            os.remove(target)
-        except PermissionError:
-            sleep(1)
-        else:
-            break
-    else:
-        raise PermissionError("Failed to remove the file.")
-
-
 def removeFromZIP(zipfname, *filenames):
     tempdir = mkdtemp('', 'KCC-')
     try:
@@ -129,23 +99,17 @@ def removeFromZIP(zipfname, *filenames):
                 for item in zipread.infolist():
                     if item.filename not in filenames:
                         zipwrite.writestr(item, zipread.read(item.filename))
-        for x in range(30):
-            try:
-                copy(tempname, zipfname)
-            except PermissionError:
-                sleep(1)
-            else:
-                break
-        else:
-            raise PermissionError
+        copy(tempname, zipfname)
     finally:
         rmtree(tempdir, True)
 
 
 def sanitizeTrace(traceback):
     return ''.join(format_tb(traceback))\
-        .replace('C:\\Users\\pawel\\Documents\\Projekty\\KCC\\', '') \
-        .replace('C:\\Users\\Paweł\\Documents\\Projekty\\KCC\\', '') \
+        .replace('C:/Users/Pawel/Documents/Projekty/KCC/', '')\
+        .replace('C:/Python35/', '')\
+        .replace('c:/python35/', '')\
+        .replace('C:\\Users\\Pawel\\Documents\\Projekty\\KCC\\', '')\
         .replace('C:\\Python35\\', '')\
         .replace('c:\\python35\\', '')
 
@@ -162,33 +126,26 @@ def dependencyCheck(level):
         try:
             import raven
         except ImportError:
-            missing.append('raven 5.13.0+')
+            missing.append('raven 6.0.0+')
     if level > 1:
         try:
             from psutil import __version__ as psutilVersion
-            if StrictVersion('4.1.0') > StrictVersion(psutilVersion):
-                missing.append('psutil 4.1.0+')
+            if StrictVersion('5.0.0') > StrictVersion(psutilVersion):
+                missing.append('psutil 5.0.0+')
         except ImportError:
-            missing.append('psutil 4.1.0+')
+            missing.append('psutil 5.0.0+')
         try:
             from slugify import __version__ as slugifyVersion
-            if StrictVersion('1.2.0') > StrictVersion(slugifyVersion):
-                missing.append('python-slugify 1.2.0+')
+            if StrictVersion('1.2.1') > StrictVersion(slugifyVersion):
+                missing.append('python-slugify 1.2.1+')
         except ImportError:
-            missing.append('python-slugify 1.2.0+')
+            missing.append('python-slugify 1.2.1+')
     try:
         from PIL import PILLOW_VERSION as pillowVersion
-        if StrictVersion('3.2.0') > StrictVersion(pillowVersion):
-            missing.append('Pillow 3.2.0+')
+        if StrictVersion('4.0.0') > StrictVersion(pillowVersion):
+            missing.append('Pillow 4.0.0+')
     except ImportError:
-        missing.append('Pillow 3.2.0+')
-    if version_info[1] < 5:
-        try:
-            from scandir import __version__ as scandirVersion
-            if StrictVersion('1.2') > StrictVersion(scandirVersion):
-                missing.append('scandir 1.2+')
-        except ImportError:
-            missing.append('scandir 1.2+')
+        missing.append('Pillow 4.0.0+')
     if len(missing) > 0:
         print('ERROR: ' + ', '.join(missing) + ' is not installed!')
         exit(1)

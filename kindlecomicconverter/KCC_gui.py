@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2012-2014 Ciro Mattia Gonano <ciromattia@gmail.com>
-# Copyright (c) 2013-2016 Pawel Jastrzebski <pawelj@iosphe.re>
+# Copyright (c) 2013-2017 Pawel Jastrzebski <pawelj@iosphe.re>
 #
 # Permission to use, copy, modify, and/or distribute this software for
 # any purpose with or without fee is hereby granted, provided that the
@@ -21,17 +21,15 @@ import os
 import sys
 from urllib.parse import unquote
 from urllib.request import urlopen, urlretrieve, Request
-from time import sleep, time
-from datetime import datetime
+from time import sleep
 from shutil import move
 from subprocess import STDOUT, PIPE
 from PyQt5 import QtGui, QtCore, QtWidgets, QtNetwork
-from xml.dom.minidom import parse, Document
+from xml.dom.minidom import parse
+from xml.sax.saxutils import escape
 from psutil import Popen, Process
 from copy import copy
 from distutils.version import StrictVersion
-from xml.sax.saxutils import escape
-from platform import platform
 from raven import Client
 from .shared import md5Checksum, HTMLStripper, sanitizeTrace
 from . import __version__
@@ -256,8 +254,10 @@ class WorkerThread(QtCore.QThread):
             options.splitter = 2
         elif GUI.rotateBox.checkState() == 2:
             options.splitter = 1
-        if GUI.qualityBox.isChecked():
-            options.hqmode = True
+        if GUI.qualityBox.checkState() == 1:
+            options.autoscale = True
+        elif GUI.qualityBox.checkState() == 2:
+            options.hq = True
         if GUI.webtoonBox.isChecked():
             options.webtoon = True
         if GUI.upscaleBox.checkState() == 1:
@@ -270,8 +270,8 @@ class WorkerThread(QtCore.QThread):
             options.white_borders = True
         elif GUI.borderBox.checkState() == 2:
             options.black_borders = True
-        if GUI.noDitheringBox.isChecked():
-            options.forcepng = True
+        if GUI.outputSplit.isChecked():
+            options.batchsplit = 2
         if GUI.colorBox.isChecked():
             options.forcecolor = True
         if GUI.currentMode > 2:
@@ -319,18 +319,24 @@ class WorkerThread(QtCore.QThread):
                 GUI.progress.content = ''
                 self.errors = True
                 _, _, traceback = sys.exc_info()
+                if len(err.args) == 1:
+                    MW.showDialog.emit("Error during conversion %s:\n\n%s\n\nTraceback:\n%s"
+                                       % (jobargv[-1], str(err), sanitizeTrace(traceback)), 'error')
+                else:
+                    MW.showDialog.emit("Error during conversion %s:\n\n%s\n\nTraceback:\n%s"
+                                       % (jobargv[-1], str(err.args[0]), err.args[1]), 'error')
+                    GUI.sentry.extra_context({'realTraceback': err.args[1]})
                 if ' is corrupted.' not in str(err):
                     GUI.sentry.captureException()
-                MW.showDialog.emit("Error during conversion %s:\n\n%s\n\nTraceback:\n%s"
-                                   % (jobargv[-1], str(err), sanitizeTrace(traceback)), 'error')
                 MW.addMessage.emit('Error during conversion! Please consult '
                                    '<a href="https://github.com/ciromattia/kcc/wiki/Error-messages">wiki</a> '
                                    'for more details.', 'error', False)
                 MW.addTrayMessage.emit('Error during conversion!', 'Critical')
             if not self.conversionAlive:
-                for item in outputPath:
-                    if os.path.exists(item):
-                        os.remove(item)
+                if 'outputPath' in locals():
+                    for item in outputPath:
+                        if os.path.exists(item):
+                            os.remove(item)
                 self.clean()
                 return
             if not self.errors:
@@ -392,7 +398,7 @@ class WorkerThread(QtCore.QThread):
                                 for item in outputPath:
                                     comic2ebook.options.covers[outputPath.index(item)][0].saveToKindle(
                                         k, comic2ebook.options.covers[outputPath.index(item)][1])
-                                MW.addMessage.emit('Kindle detected. Uploading covers...', 'info', False)
+                                MW.addMessage.emit('Kindle detected. Uploading covers... <b>Done!</b>', 'info', False)
                         else:
                             GUI.progress.content = ''
                             for item in outputPath:
@@ -544,8 +550,8 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
     def clearJobs(self):
         GUI.jobList.clear()
 
-    # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
     def openWiki(self):
+        # noinspection PyCallByClass
         QtGui.QDesktopServices.openUrl(QtCore.QUrl('https://github.com/ciromattia/kcc/wiki'))
 
     def modeChange(self, mode):
@@ -619,10 +625,24 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
             GUI.upscaleBox.setEnabled(False)
             GUI.upscaleBox.setChecked(True)
         else:
-            GUI.qualityBox.setEnabled(True)
+            profile = GUI.profiles[str(GUI.deviceBox.currentText())]
+            if profile['PVOptions']:
+                GUI.qualityBox.setEnabled(True)
             GUI.mangaBox.setEnabled(True)
             GUI.rotateBox.setEnabled(True)
             GUI.upscaleBox.setEnabled(True)
+
+    def togglequalityBox(self, value):
+        profile = GUI.profiles[str(GUI.deviceBox.currentText())]
+        if value == 2:
+            if profile['Label'] in ['KV']:
+                self.addMessage('This option is intended for older Kindle models.', 'warning')
+                self.addMessage('It might not provide any quality increase in this case.', 'warning')
+            GUI.upscaleBox.setEnabled(False)
+            GUI.upscaleBox.setChecked(True)
+        else:
+            GUI.upscaleBox.setEnabled(True)
+            GUI.upscaleBox.setChecked(profile['DefaultUpscale'])
 
     def changeGamma(self, value):
         valueRaw = int(5 * round(float(value) / 5))
@@ -645,9 +665,10 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
         self.changeFormat()
         GUI.gammaSlider.setValue(0)
         self.changeGamma(0)
-        GUI.qualityBox.setEnabled(profile['Quality'])
+        if not GUI.webtoonBox.isChecked():
+            GUI.qualityBox.setEnabled(profile['PVOptions'])
         GUI.upscaleBox.setChecked(profile['DefaultUpscale'])
-        if not profile['Quality']:
+        if not profile['PVOptions']:
             GUI.qualityBox.setChecked(False)
         if str(GUI.deviceBox.currentText()) == 'Other':
             self.addMessage('<a href="https://github.com/ciromattia/kcc/wiki/NonKindle-devices">'
@@ -659,7 +680,13 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
             GUI.formatBox.setCurrentIndex(outputFormat)
         else:
             GUI.formatBox.setCurrentIndex(profile['DefaultFormat'])
-        GUI.qualityBox.setEnabled(profile['Quality'])
+        if not GUI.webtoonBox.isChecked():
+            GUI.qualityBox.setEnabled(profile['PVOptions'])
+        if str(GUI.formatBox.currentText()) == 'MOBI/AZW3':
+            GUI.outputSplit.setEnabled(True)
+        else:
+            GUI.outputSplit.setEnabled(False)
+            GUI.outputSplit.setChecked(False)
 
     def stripTags(self, html):
         s = HTMLStripper()
@@ -678,7 +705,7 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
         # We still fill original text field with transparent content to trigger creation of horizontal scrollbar
         item.setForeground(QtGui.QColor('transparent'))
         label = QtWidgets.QLabel(message)
-        label.setStyleSheet('background-image:url('');background-color:rgba(0,0,0,0);')
+        label.setStyleSheet('background-image:url('');background-color:rgba(0,0,0,0);color:rgb(0,0,0);')
         label.setOpenExternalLinks(True)
         GUI.jobList.addItem(item)
         GUI.jobList.setItemWidget(item, label)
@@ -714,7 +741,6 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
             self.conversionAlive = False
             self.worker.sync()
         else:
-            # noinspection PyArgumentList
             if QtWidgets.QApplication.keyboardModifiers() == QtCore.Qt.ShiftModifier:
                 dname = QtWidgets.QFileDialog.getExistingDirectory(MW, 'Select output directory', self.lastPath)
                 if dname != '':
@@ -776,7 +802,7 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
                                            'upscaleBox': GUI.upscaleBox.checkState(),
                                            'borderBox': GUI.borderBox.checkState(),
                                            'webtoonBox': GUI.webtoonBox.checkState(),
-                                           'noDitheringBox': GUI.noDitheringBox.checkState(),
+                                           'outputSplit': GUI.outputSplit.checkState(),
                                            'colorBox': GUI.colorBox.checkState(),
                                            'widthBox': GUI.widthBox.value(),
                                            'heightBox': GUI.heightBox.value(),
@@ -862,7 +888,6 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
                 else:
                     self.addMessage('Download it and place executable in /usr/local/bin directory.', 'error')
 
-    # noinspection PyArgumentList
     def __init__(self, KCCAplication, KCCWindow):
         global APP, MW, GUI
         APP = KCCAplication
@@ -910,37 +935,39 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
                 MW.resize(500, 500)
 
         self.profiles = {
-            "Kindle Oasis": {'Quality': True, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle Oasis": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                              'DefaultUpscale': True, 'Label': 'KV'},
-            "Kindle Voyage": {'Quality': True, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle Voyage": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                               'DefaultUpscale': True, 'Label': 'KV'},
-            "Kindle PW 3": {'Quality': True, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle PW 3": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                             'DefaultUpscale': True, 'Label': 'KV'},
-            "Kindle PW 1/2": {'Quality': True, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle PW 1/2": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                               'DefaultUpscale': False, 'Label': 'KPW'},
-            "Kindle": {'Quality': True, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                        'DefaultUpscale': False, 'Label': 'K45'},
-            "Kindle DX/DXG": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 2,
+            "Kindle DX/DXG": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 2,
                               'DefaultUpscale': False, 'Label': 'KDX'},
-            "Kobo Mini/Touch": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Mini/Touch": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                                 'DefaultUpscale': False, 'Label': 'KoMT'},
-            "Kobo Glo": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Glo": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                          'DefaultUpscale': False, 'Label': 'KoG'},
-            "Kobo Glo HD": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Glo HD": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                             'DefaultUpscale': False, 'Label': 'KoGHD'},
-            "Kobo Aura": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Aura": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                           'DefaultUpscale': False, 'Label': 'KoA'},
-            "Kobo Aura HD": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Aura HD": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                              'DefaultUpscale': True, 'Label': 'KoAHD'},
-            "Kobo Aura H2O": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 1,
+            "Kobo Aura H2O": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
                               'DefaultUpscale': True, 'Label': 'KoAH2O'},
-            "Other": {'Quality': False, 'ForceExpert': True, 'DefaultFormat': 1,
+            "Kobo Aura ONE": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 1,
+                              'DefaultUpscale': True, 'Label': 'KoAO'},
+            "Other": {'PVOptions': False, 'ForceExpert': True, 'DefaultFormat': 1,
                       'DefaultUpscale': False, 'Label': 'OTHER'},
-            "Kindle 1": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle 1": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 0,
                          'DefaultUpscale': False, 'Label': 'K1'},
-            "Kindle 2": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle 2": {'PVOptions': False, 'ForceExpert': False, 'DefaultFormat': 0,
                          'DefaultUpscale': False, 'Label': 'K2'},
-            "Kindle 3": {'Quality': False, 'ForceExpert': False, 'DefaultFormat': 0,
+            "Kindle 3": {'PVOptions': True, 'ForceExpert': False, 'DefaultFormat': 0,
                          'DefaultUpscale': False, 'Label': 'K3'},
         }
         profilesGUI = [
@@ -950,6 +977,7 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
             "Kindle PW 1/2",
             "Kindle",
             "Separator",
+            "Kobo Aura ONE",
             "Kobo Aura H2O",
             "Kobo Aura HD",
             "Kobo Aura",
@@ -1007,6 +1035,7 @@ class KCCGUI(KCC_ui.Ui_mainWindow):
         GUI.gammaSlider.valueChanged.connect(self.changeGamma)
         GUI.gammaBox.stateChanged.connect(self.togglegammaBox)
         GUI.webtoonBox.stateChanged.connect(self.togglewebtoonBox)
+        GUI.qualityBox.stateChanged.connect(self.togglequalityBox)
         GUI.deviceBox.activated.connect(self.changeDevice)
         GUI.formatBox.activated.connect(self.changeFormat)
         MW.progressBarTick.connect(self.updateProgressbar)

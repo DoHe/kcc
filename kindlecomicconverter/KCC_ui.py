@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'gui\KCC.ui'
 #
-# Created by: PyQt5 UI code generator 5.6
+# Created by: PyQt5 UI code generator 5.8.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -31,7 +31,7 @@ class Ui_mainWindow(object):
         self.progressBar.setObjectName("progressBar")
         self.gridLayout.addWidget(self.progressBar, 1, 0, 1, 2)
         self.jobList = QtWidgets.QListWidget(self.centralWidget)
-        self.jobList.setStyleSheet("QListWidget#jobList {background:#ffffff;background-image:url(:/Other/icons/list_background.png);background-position:center center;background-repeat:no-repeat;}")
+        self.jobList.setStyleSheet("QListWidget#jobList {background:#ffffff;background-image:url(:/Other/icons/list_background.png);background-position:center center;background-repeat:no-repeat;color:rgb(0,0,0);}")
         self.jobList.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.jobList.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.jobList.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
@@ -81,6 +81,7 @@ class Ui_mainWindow(object):
         self.rotateBox.setObjectName("rotateBox")
         self.gridLayout_2.addWidget(self.rotateBox, 0, 1, 1, 1)
         self.qualityBox = QtWidgets.QCheckBox(self.optionWidget)
+        self.qualityBox.setTristate(True)
         self.qualityBox.setObjectName("qualityBox")
         self.gridLayout_2.addWidget(self.qualityBox, 0, 2, 1, 1)
         self.webtoonBox = QtWidgets.QCheckBox(self.optionWidget)
@@ -97,9 +98,9 @@ class Ui_mainWindow(object):
         self.borderBox.setTristate(True)
         self.borderBox.setObjectName("borderBox")
         self.gridLayout_2.addWidget(self.borderBox, 2, 0, 1, 1)
-        self.noDitheringBox = QtWidgets.QCheckBox(self.optionWidget)
-        self.noDitheringBox.setObjectName("noDitheringBox")
-        self.gridLayout_2.addWidget(self.noDitheringBox, 2, 1, 1, 1)
+        self.outputSplit = QtWidgets.QCheckBox(self.optionWidget)
+        self.outputSplit.setObjectName("outputSplit")
+        self.gridLayout_2.addWidget(self.outputSplit, 2, 1, 1, 1)
         self.colorBox = QtWidgets.QCheckBox(self.optionWidget)
         self.colorBox.setObjectName("colorBox")
         self.gridLayout_2.addWidget(self.colorBox, 2, 2, 1, 1)
@@ -219,8 +220,8 @@ class Ui_mainWindow(object):
         mainWindow.setTabOrder(self.webtoonBox, self.upscaleBox)
         mainWindow.setTabOrder(self.upscaleBox, self.gammaBox)
         mainWindow.setTabOrder(self.gammaBox, self.borderBox)
-        mainWindow.setTabOrder(self.borderBox, self.noDitheringBox)
-        mainWindow.setTabOrder(self.noDitheringBox, self.colorBox)
+        mainWindow.setTabOrder(self.borderBox, self.outputSplit)
+        mainWindow.setTabOrder(self.outputSplit, self.colorBox)
         mainWindow.setTabOrder(self.colorBox, self.editorButton)
         mainWindow.setTabOrder(self.editorButton, self.wikiButton)
         mainWindow.setTabOrder(self.wikiButton, self.jobList)
@@ -241,8 +242,8 @@ class Ui_mainWindow(object):
         self.mangaBox.setText(_translate("mainWindow", "Manga mode"))
         self.rotateBox.setToolTip(_translate("mainWindow", "<html><head/><body><p><span style=\" font-weight:600; text-decoration: underline;\">Unchecked - Split<br/></span>Double page spreads will be cut into two separate pages.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Indeterminate - Rotate and split<br/></span>Double page spreads will be displayed twice. First rotated and then split. </p><p><span style=\" font-weight:600; text-decoration: underline;\">Checked - Rotate<br/></span>Double page spreads will be rotated.</p></body></html>"))
         self.rotateBox.setText(_translate("mainWindow", "Spread splitter"))
-        self.qualityBox.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'>High quality Panel View.<br/>Require source files with bigger resolution than target device.<br/><span style=\" font-weight:600;\">Highly impact size of output file!</span></p></body></html>"))
-        self.qualityBox.setText(_translate("mainWindow", "HQ zoom"))
+        self.qualityBox.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'><span style=\" font-weight:600; text-decoration: underline;\">Unchecked - 4 panels<br/></span>Zoom each corner separately.</p><p style=\'white-space:pre\'><span style=\" font-weight:600; text-decoration: underline;\">Indeterminate - 2 panels<br/></span>Zoom only the top and bottom of the page.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Checked - 4 high quality panels<br/></span>Zoom each corner separately. Try to increase the quality of magnification. Check wiki for more details.</p></body></html>"))
+        self.qualityBox.setText(_translate("mainWindow", "Panel View 4/2/HQ"))
         self.webtoonBox.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'>Enable special parsing mode for Korean Webtoons.</p></body></html>"))
         self.webtoonBox.setText(_translate("mainWindow", "Webtoon mode"))
         self.upscaleBox.setToolTip(_translate("mainWindow", "<html><head/><body><p><span style=\" font-weight:600; text-decoration: underline;\">Unchecked - Nothing<br/></span>Images smaller than device resolution will not be resized.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Indeterminate - Stretching<br/></span>Images smaller than device resolution will be resized. Aspect ratio will be not preserved.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Checked - Upscaling<br/></span>Images smaller than device resolution will be resized. Aspect ratio will be preserved.</p></body></html>"))
@@ -251,8 +252,8 @@ class Ui_mainWindow(object):
         self.gammaBox.setText(_translate("mainWindow", "Custom gamma"))
         self.borderBox.setToolTip(_translate("mainWindow", "<html><head/><body><p><span style=\" font-weight:600; text-decoration: underline;\">Unchecked - Autodetection<br/></span>Color of margins fill will be detected automatically.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Indeterminate - White<br/></span>Margins will be filled with white color.</p><p><span style=\" font-weight:600; text-decoration: underline;\">Checked - Black<br/></span>Margins will be filled with black color.</p></body></html>"))
         self.borderBox.setText(_translate("mainWindow", "W/B margins"))
-        self.noDitheringBox.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'>Create PNG files instead JPEG.<br/>Quality increase is not noticeable on most of devices.<br/>Output files <span style=\" font-weight:600;\">might</span> be smaller.<br/><span style=\" font-weight:600;\">MOBI conversion will be much slower.</span></p></body></html>"))
-        self.noDitheringBox.setText(_translate("mainWindow", "PNG output"))
+        self.outputSplit.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'><span style=\" font-weight:600; text-decoration: underline;\">Unchecked - Automatic mode<br/></span>Output will be splitted automatically.</p><p style=\'white-space:pre\'><span style=\" font-weight:600; text-decoration: underline;\">Checked - Volume mode<br/></span>Every subdirectory will be considered as separate volume.</p></body></html>"))
+        self.outputSplit.setText(_translate("mainWindow", "Output split"))
         self.colorBox.setToolTip(_translate("mainWindow", "<html><head/><body><p style=\'white-space:pre\'>Disable conversion to grayscale.</p></body></html>"))
         self.colorBox.setText(_translate("mainWindow", "Color mode"))
         self.gammaLabel.setText(_translate("mainWindow", "Gamma: Auto"))
